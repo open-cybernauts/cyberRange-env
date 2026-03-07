@@ -1,0 +1,40 @@
+# Rendered scenario artifact for {{VARIANT_ID}}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: internal-api
+  namespace: {{NAMESPACE}}
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: internal-api
+  template:
+    metadata:
+      labels:
+        app: internal-api
+    spec:
+      containers:
+        - name: api
+          image: {{API_IMAGE}}
+          ports:
+            - containerPort: 8080
+          env:
+            - name: DATABASE_URL
+              value: {{DATABASE_URL}}
+            - name: TICKET_SEARCH_LIMIT
+              value: "25"
+            - name: ACTIVE_VARIANT
+              value: {{VARIANT_ID}}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{INTERNAL_API_SERVICE}}
+  namespace: {{NAMESPACE}}
+spec:
+  selector:
+    app: internal-api
+  ports:
+    - port: 8080
+      targetPort: 8080

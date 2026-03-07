@@ -1,0 +1,70 @@
+{
+  "variant_id": "internal_ops_easy_manifest_leak",
+  "scenario_id": "internal_ops",
+  "display_name": "Manifest Credential Leak",
+  "difficulty": "easy",
+  "exploit_path": "credential_leak_from_manifest",
+  "manifest_profile": "inline_seed_configmap",
+  "search_mode": "safe_like",
+  "flag_source": "artifact",
+  "objective_chain": [
+    {
+      "objective_id": "inspect_seed_manifest",
+      "description": "Read the inline seed manifest to recover the initialized flag.",
+      "success_type": "artifact_extract",
+      "reward": 0.3,
+      "target": "k8s/configmap-init-sql.yaml"
+    },
+    {
+      "objective_id": "submit_flag",
+      "description": "Submit the recovered flag.",
+      "success_type": "flag_submit",
+      "reward": 1.0
+    }
+  ],
+  "hints": [
+    "This variant rewards careful manifest reading more than app exploitation.",
+    "One artifact is rendered with far more detail than it should be.",
+    "The public helpdesk remains available, but it is mostly a decoy here."
+  ],
+  "sql_template_path": "sql/base_init.sql",
+  "artifact_template_paths": [
+    "k8s/namespace.yaml",
+    "k8s/ingress.yaml",
+    "k8s/helpdesk-web.yaml",
+    "k8s/internal-api.yaml",
+    "k8s/postgres.yaml",
+    "k8s/configmap-init-sql.yaml"
+  ],
+  "seed_profile": {
+    "ticket_pool": [
+      {
+        "id": 1,
+        "title": "manifest-sync-review",
+        "description": "Platform asked whether the generated manifests still match production expectations.",
+        "status": "open"
+      },
+      {
+        "id": 2,
+        "title": "database-init-retention",
+        "description": "Audit whether init SQL data is retained for rollback investigations.",
+        "status": "pending"
+      }
+    ],
+    "decoy_pool": [
+      {
+        "id": 3,
+        "title": "payroll-dashboard-timeout",
+        "description": "Internal payroll dashboard intermittently times out during report generation.",
+        "status": "open"
+      }
+    ],
+    "service_names": ["internal-api", "ops-api"],
+    "public_hosts": ["ops.northbridge.internal", "helpdesk.northbridge.internal"],
+    "image_tags": ["1.9.4"],
+    "db_passwords": ["init_seed_password", "helpdesk_dev_password"]
+  },
+  "internal_status_template": {
+    "debug_hint": "Rollback investigations still consult rendered manifests before querying the database."
+  }
+}

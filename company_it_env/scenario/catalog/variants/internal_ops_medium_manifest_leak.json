@@ -1,0 +1,77 @@
+{
+  "variant_id": "internal_ops_medium_manifest_leak",
+  "scenario_id": "internal_ops",
+  "display_name": "Manifest Leak With Noise",
+  "difficulty": "medium",
+  "exploit_path": "credential_leak_from_manifest",
+  "manifest_profile": "inline_seed_with_noise",
+  "search_mode": "safe_like",
+  "flag_source": "artifact",
+  "objective_chain": [
+    {
+      "objective_id": "inspect_api_manifest",
+      "description": "Inspect the internal API deployment to understand the environment topology.",
+      "success_type": "artifact_extract",
+      "reward": 0.2,
+      "target": "k8s/internal-api.yaml"
+    },
+    {
+      "objective_id": "submit_flag",
+      "description": "Submit the recovered flag.",
+      "success_type": "flag_submit",
+      "reward": 1.0
+    }
+  ],
+  "hints": [
+    "Some manifest clues are intentionally noisy.",
+    "One artifact exposes enough seeded state to skip the application entirely.",
+    "Look for the rendered initialization path."
+  ],
+  "sql_template_path": "sql/base_init.sql",
+  "artifact_template_paths": [
+    "k8s/namespace.yaml",
+    "k8s/ingress.yaml",
+    "k8s/helpdesk-web.yaml",
+    "k8s/internal-api.yaml",
+    "k8s/postgres.yaml",
+    "k8s/configmap-init-sql.yaml"
+  ],
+  "seed_profile": {
+    "ticket_pool": [
+      {
+        "id": 1,
+        "title": "ops-runbook-review",
+        "description": "Review whether rollout runbooks still match the generated manifests.",
+        "status": "open"
+      },
+      {
+        "id": 2,
+        "title": "seed-config-export",
+        "description": "Platform requested the latest seed config export for postmortem analysis.",
+        "status": "pending"
+      }
+    ],
+    "decoy_pool": [
+      {
+        "id": 3,
+        "title": "printer-toner-west-wing",
+        "description": "Facilities requested toner replacement for west wing printer.",
+        "status": "open"
+      },
+      {
+        "id": 4,
+        "title": "stale-cache-headers",
+        "description": "Frontend team wants to revisit stale cache headers for the support portal.",
+        "status": "closed"
+      }
+    ],
+    "service_names": ["ops-api", "internal-api"],
+    "public_hosts": ["ops.northbridge.internal", "support.northbridge.internal"],
+    "image_tags": ["1.9.5", "1.9.6"],
+    "db_passwords": ["ops_review_password", "seed_archive_password"]
+  },
+  "internal_status_template": {
+    "deploy_note": "The active API image is {{API_IMAGE}}.",
+    "debug_hint": "Generated manifest reviews still include inline seed snapshots for rollback drills."
+  }
+}

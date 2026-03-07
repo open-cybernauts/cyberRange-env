@@ -1,0 +1,10 @@
+# Rendered scenario artifact for {{VARIANT_ID}}
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: {{NAMESPACE}}
+  labels:
+    app.kubernetes.io/part-of: northbridge-support
+    training.openenv/scenario-id: {{SCENARIO_ID}}
+    training.openenv/variant-id: {{VARIANT_ID}}
+    training.openenv/difficulty: {{DIFFICULTY}}

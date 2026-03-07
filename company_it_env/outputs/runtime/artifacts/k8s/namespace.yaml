@@ -1,0 +1,10 @@
+# Rendered scenario artifact for helpdesk_easy_union
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: company-it
+  labels:
+    app.kubernetes.io/part-of: northbridge-support
+    training.openenv/scenario-id: helpdesk
+    training.openenv/variant-id: helpdesk_easy_union
+    training.openenv/difficulty: easy

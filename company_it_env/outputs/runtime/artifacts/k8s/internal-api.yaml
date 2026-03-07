@@ -1,0 +1,40 @@
+# Rendered scenario artifact for helpdesk_easy_union
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: internal-api
+  namespace: company-it
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: internal-api
+  template:
+    metadata:
+      labels:
+        app: internal-api
+    spec:
+      containers:
+        - name: api
+          image: ghcr.io/northbridge/internal-api:1.9.4
+          ports:
+            - containerPort: 8080
+          env:
+            - name: DATABASE_URL
+              value: postgresql://helpdesk_app:northbridge_helpdesk_dev@postgres.company-it.svc.cluster.local:5432/helpdesk
+            - name: TICKET_SEARCH_LIMIT
+              value: "25"
+            - name: ACTIVE_VARIANT
+              value: helpdesk_easy_union
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: internal-api
+  namespace: company-it
+spec:
+  selector:
+    app: internal-api
+  ports:
+    - port: 8080
+      targetPort: 8080

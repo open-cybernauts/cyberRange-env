@@ -1,0 +1,38 @@
+# Rendered scenario artifact for {{VARIANT_ID}}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: helpdesk-web
+  namespace: {{NAMESPACE}}
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: helpdesk-web
+  template:
+    metadata:
+      labels:
+        app: helpdesk-web
+    spec:
+      containers:
+        - name: web
+          image: {{WEB_IMAGE}}
+          ports:
+            - containerPort: 8080
+          env:
+            - name: OPS_API_BASE_URL
+              value: {{INTERNAL_API_BASE_URL}}
+            - name: PUBLIC_BRAND
+              value: {{PUBLIC_BRAND}}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: helpdesk-web
+  namespace: {{NAMESPACE}}
+spec:
+  selector:
+    app: helpdesk-web
+  ports:
+    - port: 80
+      targetPort: 8080

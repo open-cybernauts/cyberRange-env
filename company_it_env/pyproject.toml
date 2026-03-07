@@ -1,0 +1,32 @@
+[build-system]
+requires = ["setuptools>=45", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "openenv-company-it-env"
+version = "0.1.0"
+description = "OpenEnv company IT lab with a vulnerable helpdesk app and Kubernetes-backed scenario artifacts"
+requires-python = ">=3.10"
+dependencies = [
+  "openenv-core[core]>=0.2.1",
+  "fastapi>=0.115.0",
+  "fastmcp>=2.0.0",
+  "pydantic>=2.7.0",
+  "requests>=2.31.0",
+  "uvicorn>=0.30.0",
+]
+
+[project.optional-dependencies]
+dev = [
+  "pytest>=8.0.0",
+]
+
+[project.scripts]
+server = "company_it_env.server.app:main"
+solve-lab = "company_it_env.server.solver:main"
+validate-rl = "company_it_env.server.validate_rl_readiness:main"
+
+[tool.setuptools]
+include-package-data = true
+packages = ["company_it_env", "company_it_env.server"]
+package-dir = { "company_it_env" = ".", "company_it_env.server" = "server" }
