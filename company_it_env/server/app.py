@@ -8,15 +8,13 @@ from fastapi import FastAPI, HTTPException, Query
 from fastapi.responses import HTMLResponse, JSONResponse, PlainTextResponse, RedirectResponse
 
 from company_it_env.models import FlagSubmission, SearchResponse, TicketRecord
-from company_it_env.server.company_it_environment import CompanyITEnvironment
+from company_it_env.server.company_it_environment import CompanyITEnvironment, MCPWebAction
 from company_it_env.server.lab_runtime import LabRuntime
+from company_it_env.server.web_ui import create_company_web_interface_app
 
 try:
-    from openenv.core.env_server.http_server import create_app
-    from openenv.core.env_server.mcp_types import CallToolAction, CallToolObservation
+    from openenv.core.env_server.mcp_types import CallToolObservation
 except Exception:  # pragma: no cover - dependency resolved in environment runtime
-    create_app = None  # type: ignore[assignment]
-    CallToolAction = object  # type: ignore[assignment]
     CallToolObservation = object  # type: ignore[assignment]
 
 
@@ -189,10 +187,10 @@ def build_app(runtime: LabRuntime | None = None) -> FastAPI:
     def env_factory() -> CompanyITEnvironment:
         return CompanyITEnvironment(runtime=runtime_instance)
 
-    if create_app is not None:
-        app = create_app(
+    if CallToolObservation is not object:
+        app = create_company_web_interface_app(
             env_factory,
-            CallToolAction,
+            MCPWebAction,
             CallToolObservation,
             env_name="company_it_env",
         )

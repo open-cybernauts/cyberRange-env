@@ -3,10 +3,11 @@
 from __future__ import annotations
 
 from pathlib import Path
-from typing import Any, Optional
+from typing import Any, Literal, Optional
 from uuid import uuid4
 
 from fastmcp import FastMCP
+from pydantic import Field, model_validator
 
 from company_it_env.server.lab_runtime import LabRuntime
 from company_it_env.server.trajectory_logger import TrajectoryLogger
@@ -58,6 +59,26 @@ except Exception:  # pragma: no cover - dependency resolved in environment runti
             self.tool_name = tool_name
             self.result = result
             self.error = error
+
+
+class MCPWebAction(Action):
+    """Action schema for the manual web UI."""
+
+    type: Literal["call_tool", "list_tools"] = Field(
+        default="call_tool", description="Action type discriminator"
+    )
+    tool_name: Optional[str] = Field(
+        default=None, description="Name of the tool to call"
+    )
+    arguments: dict[str, Any] = Field(
+        default_factory=dict, description="Arguments to pass to the tool"
+    )
+
+    @model_validator(mode="after")
+    def validate_action(self) -> "MCPWebAction":
+        if self.type == "call_tool" and not self.tool_name:
+            raise ValueError("tool_name is required when type is 'call_tool'")
+        return self
 
 
 class CompanyITEnvironment(MCPEnvironment):
@@ -186,6 +207,7 @@ class CompanyITEnvironment(MCPEnvironment):
         timeout_s: Optional[float] = None,
         **kwargs: Any,
     ) -> Observation:
+        action = self._coerce_mcp_action(action)
         if self._terminated:
             return Observation(
                 done=True,
@@ -212,6 +234,18 @@ class CompanyITEnvironment(MCPEnvironment):
             state=self._state_dict(),
         )
         return observation
+
+    def _coerce_mcp_action(self, action: Action) -> Action:
+        """Convert web-form actions into concrete MCP action models."""
+        if isinstance(action, MCPWebAction):
+            if action.type == "list_tools":
+                return ListToolsAction(metadata=action.metadata)
+            return CallToolAction(
+                metadata=action.metadata,
+                tool_name=action.tool_name or "",
+                arguments=action.arguments,
+            )
+        return action
 
     @property
     def state(self) -> State:
