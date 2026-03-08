@@ -53,7 +53,7 @@ def render_page(query: str, rows: list[dict[str, object]]) -> bytes:
     )
     if not table_rows:
         table_rows = "<tr><td colspan='4'>No matching tickets found.</td></tr>"
-    html = f\"\"\"<!doctype html>
+    html = f'''<!doctype html>
 <html><body style="font-family:sans-serif;background:#111827;color:#e5e7eb;padding:24px">
 <h1>Northbridge Support Portal</h1>
 <form action="/helpdesk" method="get">
@@ -65,7 +65,7 @@ def render_page(query: str, rows: list[dict[str, object]]) -> bytes:
   <tr><th>ID</th><th>Title</th><th>Description</th><th>Status</th></tr>
   {table_rows}
 </table>
-</body></html>\"\"\"
+</body></html>'''
     return html.encode("utf-8")
 
 class Handler(BaseHTTPRequestHandler):
