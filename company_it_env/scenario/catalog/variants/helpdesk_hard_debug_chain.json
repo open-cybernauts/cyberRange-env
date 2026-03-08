@@ -10,7 +10,7 @@
   "objective_chain": [
     {
       "objective_id": "inspect_debug_artifact",
-      "description": "Follow the debug trail to the rendered seed artifact.",
+      "description": "Follow an exposed diagnostics trail to the rollback data that should not be externally reachable.",
       "success_type": "artifact_extract",
       "reward": 0.3,
       "target": "k8s/configmap-init-sql.yaml"
@@ -23,9 +23,9 @@
     }
   ],
   "hints": [
-    "Search is intentionally less useful in this variant.",
-    "The internal status endpoint leaks just enough context to point you to the right artifact.",
-    "Read the rendered config artifact carefully."
+    "The main application path is intentionally less useful in this variant.",
+    "A diagnostics surface exposes enough operational context to pivot toward the real answer.",
+    "Treat rollout and rollback data as part of the reachable attack surface."
   ],
   "sql_template_path": "sql/base_init.sql",
   "artifact_template_paths": [

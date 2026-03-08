@@ -10,7 +10,7 @@
   "objective_chain": [
     {
       "objective_id": "inspect_api_manifest",
-      "description": "Inspect the internal API artifact for the backing database connection details.",
+      "description": "Enumerate the exposed service behavior to understand how requests reach the data plane.",
       "success_type": "artifact_extract",
       "reward": 0.2,
       "target": "k8s/internal-api.yaml"
@@ -23,9 +23,9 @@
     }
   ],
   "hints": [
-    "The search entry point is still the simplest route, but the artifacts contain useful context.",
-    "Not every manifest detail is actionable in this variant.",
-    "The database row containing the real flag still exists."
+    "Start with the public helpdesk entrypoint and expect extra noise.",
+    "Not every response detail is actionable in this variant.",
+    "The real flag is still retrievable from the backing data path if you identify the vulnerable request."
   ],
   "sql_template_path": "sql/base_init.sql",
   "artifact_template_paths": [

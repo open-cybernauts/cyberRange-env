@@ -23,6 +23,7 @@ dev = [
 
 [project.scripts]
 server = "company_it_env.server.app:main"
+controller-server = "company_it_env.server.controller_service:main"
 solve-lab = "company_it_env.server.solver:main"
 validate-rl = "company_it_env.server.validate_rl_readiness:main"
 

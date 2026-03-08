@@ -1,0 +1,11 @@
+# Rendered scenario artifact for helpdesk_easy_union
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: company-it
+configMapGenerator:
+  - name: postgres-init-sql
+    files:
+      - 020-seed-flag.sql=sql/init.sql
+generatorOptions:
+  disableNameSuffixHash: true
+

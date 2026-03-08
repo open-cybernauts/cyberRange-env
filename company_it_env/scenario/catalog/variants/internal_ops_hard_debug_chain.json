@@ -10,7 +10,7 @@
   "objective_chain": [
     {
       "objective_id": "inspect_debug_artifact",
-      "description": "Use the internal status debug trail to locate the rendered seed artifact.",
+      "description": "Use the exposed diagnostics trail to locate rollback data that should remain internal.",
       "success_type": "artifact_extract",
       "reward": 0.3,
       "target": "k8s/configmap-init-sql.yaml"
@@ -23,9 +23,9 @@
     }
   ],
   "hints": [
-    "The app itself is not obviously vulnerable in this variant.",
-    "Internal status exposes rollout diagnostics that should not be public.",
-    "The final artifact contains the seeded answer."
+    "The main application surface is not obviously vulnerable in this variant.",
+    "A leaked diagnostics path exposes rollout data that should not be public.",
+    "The final answer is reachable through that misplaced operational surface."
   ],
   "sql_template_path": "sql/base_init.sql",
   "artifact_template_paths": [

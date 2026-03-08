@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import asyncio
 from concurrent.futures import ThreadPoolExecutor
+from html import escape
 from typing import Any, Dict, List, Optional, Type
 
 from fastapi import FastAPI, WebSocket, WebSocketDisconnect
@@ -13,7 +14,6 @@ from openenv.core.env_server.http_server import create_fastapi_app
 from openenv.core.env_server.types import Action, EnvironmentMetadata, Observation
 from openenv.core.env_server.web_interface import (
     WebInterfaceManager,
-    _markdown_to_html,
     load_environment_metadata,
 )
 
@@ -68,6 +68,11 @@ def create_company_web_interface_app(
         return web_manager.get_state()
 
     return app
+
+
+def _markdown_to_html(markdown: str) -> str:
+    lines = [escape(line) for line in markdown.splitlines()]
+    return "<br/>".join(lines)
 
 
 def get_company_web_interface_html(

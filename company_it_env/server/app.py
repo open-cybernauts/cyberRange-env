@@ -1,15 +1,16 @@
-"""FastAPI app for the company IT OpenEnv lab and public helpdesk surface."""
+"""FastAPI app for the company IT OpenEnv control plane."""
 
 from __future__ import annotations
 
+import os
 from html import escape
 
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.responses import HTMLResponse, JSONResponse, PlainTextResponse, RedirectResponse
 
-from company_it_env.models import FlagSubmission, SearchResponse, TicketRecord
+from company_it_env.models import EpisodeFlagSubmission, SearchResponse, TicketRecord
 from company_it_env.server.company_it_environment import CompanyITEnvironment, MCPWebAction
-from company_it_env.server.lab_runtime import LabRuntime
+from company_it_env.server.controller import HttpLabControllerClient, LabController, SimulatedLabController
 from company_it_env.server.web_ui import create_company_web_interface_app
 
 try:
@@ -180,12 +181,18 @@ def render_helpdesk_page(result: SearchResponse | None = None) -> str:
 """
 
 
-def build_app(runtime: LabRuntime | None = None) -> FastAPI:
-    runtime_instance = runtime or LabRuntime()
-    runtime_instance.reset()
+def build_controller_from_env() -> LabController:
+    remote_url = os.environ.get("COMPANY_IT_REMOTE_CONTROLLER_URL")
+    if remote_url:
+        return HttpLabControllerClient(remote_url)
+    return SimulatedLabController()
+
+
+def build_app(controller: LabController | None = None) -> FastAPI:
+    controller_instance = controller or build_controller_from_env()
 
     def env_factory() -> CompanyITEnvironment:
-        return CompanyITEnvironment(runtime=runtime_instance)
+        return CompanyITEnvironment(controller=controller_instance)
 
     if CallToolObservation is not object:
         app = create_company_web_interface_app(
@@ -199,47 +206,104 @@ def build_app(runtime: LabRuntime | None = None) -> FastAPI:
 
     @app.get("/", include_in_schema=False)
     def root() -> RedirectResponse:
-        return RedirectResponse(url="/helpdesk")
+        return RedirectResponse(url="/web")
 
     @app.get("/health", include_in_schema=False)
     def health() -> JSONResponse:
-        return JSONResponse(runtime_instance.health())
+        return JSONResponse(controller_instance.health().model_dump())
 
-    @app.get("/helpdesk", response_class=HTMLResponse, include_in_schema=False)
-    def helpdesk(query: str = Query(default="")) -> HTMLResponse:
-        result = runtime_instance.search_tickets(query) if query else SearchResponse(query="")
-        return HTMLResponse(render_helpdesk_page(result))
+    @app.get("/controller/health")
+    def controller_health() -> JSONResponse:
+        return JSONResponse(controller_instance.health().model_dump())
 
-    @app.get("/helpdesk/api/search", response_model=SearchResponse)
-    def helpdesk_api_search(query: str = Query(default="")) -> SearchResponse:
-        return runtime_instance.search_tickets(query)
+    @app.get("/scenarios")
+    def scenarios() -> JSONResponse:
+        return JSONResponse(controller_instance.list_scenarios())
 
-    @app.get("/helpdesk/api/tickets/{ticket_id}", response_model=TicketRecord)
-    def helpdesk_api_ticket(ticket_id: int) -> TicketRecord:
-        ticket = runtime_instance.get_ticket(ticket_id)
-        if ticket is None:
-            raise HTTPException(status_code=404, detail="Ticket not found")
-        return ticket
-
-    @app.get("/internal-api/v1/status")
-    def internal_status() -> JSONResponse:
-        return JSONResponse(runtime_instance.internal_status())
-
-    @app.get("/artifacts")
-    def artifacts() -> JSONResponse:
-        return JSONResponse({"artifacts": runtime_instance.list_artifacts()})
-
-    @app.get("/artifacts/{artifact_path:path}", response_class=PlainTextResponse)
-    def artifact(artifact_path: str) -> PlainTextResponse:
+    @app.get("/episodes/{episode_id}/status")
+    def episode_status(episode_id: str) -> JSONResponse:
         try:
-            contents = runtime_instance.read_artifact(artifact_path)
-        except FileNotFoundError as exc:
-            raise HTTPException(status_code=404, detail="Artifact not found") from exc
-        return PlainTextResponse(contents)
+            payload = controller_instance.get_status(episode_id).model_dump()
+        except KeyError as exc:
+            raise HTTPException(status_code=404, detail="Episode not found") from exc
+        return JSONResponse(payload)
+
+    @app.get("/episodes/{episode_id}/attacker-access")
+    def episode_attacker_access(episode_id: str) -> JSONResponse:
+        try:
+            payload = controller_instance.get_attacker_access(episode_id).model_dump()
+        except KeyError as exc:
+            raise HTTPException(status_code=404, detail="Episode not found") from exc
+        return JSONResponse(payload)
 
     @app.post("/challenge/submit")
-    def challenge_submit(submission: FlagSubmission) -> JSONResponse:
-        return JSONResponse(runtime_instance.submit_flag(submission.flag).model_dump())
+    def challenge_submit(submission: EpisodeFlagSubmission) -> JSONResponse:
+        try:
+            result = controller_instance.submit_flag(submission.episode_id, submission.flag)
+        except KeyError as exc:
+            raise HTTPException(status_code=404, detail="Episode not found") from exc
+        return JSONResponse(result.model_dump())
+
+    if isinstance(controller_instance, SimulatedLabController):
+
+        @app.get("/simulated-target/{episode_id}/helpdesk", response_class=HTMLResponse, include_in_schema=False)
+        def helpdesk(episode_id: str, query: str = Query(default="")) -> HTMLResponse:
+            try:
+                result = (
+                    controller_instance.search_public_tickets(episode_id, query)
+                    if query
+                    else SearchResponse(query="")
+                )
+            except KeyError as exc:
+                raise HTTPException(status_code=404, detail="Episode not found") from exc
+            return HTMLResponse(render_helpdesk_page(result))
+
+        @app.get("/simulated-target/{episode_id}/helpdesk/api/search", response_model=SearchResponse)
+        def helpdesk_api_search(episode_id: str, query: str = Query(default="")) -> SearchResponse:
+            try:
+                return controller_instance.search_public_tickets(episode_id, query)
+            except KeyError as exc:
+                raise HTTPException(status_code=404, detail="Episode not found") from exc
+
+        @app.get("/simulated-target/{episode_id}/helpdesk/api/tickets/{ticket_id}", response_model=TicketRecord)
+        def helpdesk_api_ticket(episode_id: str, ticket_id: int) -> TicketRecord:
+            try:
+                ticket = controller_instance.get_public_ticket(episode_id, ticket_id)
+            except KeyError as exc:
+                raise HTTPException(status_code=404, detail="Episode not found") from exc
+            if ticket is None:
+                raise HTTPException(status_code=404, detail="Ticket not found")
+            return ticket
+
+        @app.get("/simulated-target/{episode_id}/internal-api/v1/status")
+        def internal_status(episode_id: str) -> JSONResponse:
+            try:
+                payload = controller_instance.get_debug_status(episode_id)
+            except KeyError as exc:
+                raise HTTPException(status_code=404, detail="Episode not found") from exc
+            except FileNotFoundError as exc:
+                raise HTTPException(status_code=404, detail=str(exc)) from exc
+            return JSONResponse(payload)
+
+        @app.get("/simulated-target/{episode_id}/ops/artifacts")
+        def ops_artifacts(episode_id: str) -> JSONResponse:
+            try:
+                payload = controller_instance.list_review_artifacts(episode_id)
+            except KeyError as exc:
+                raise HTTPException(status_code=404, detail="Episode not found") from exc
+            except FileNotFoundError as exc:
+                raise HTTPException(status_code=404, detail=str(exc)) from exc
+            return JSONResponse({"artifacts": payload})
+
+        @app.get("/simulated-target/{episode_id}/ops/artifacts/{artifact_path:path}", response_class=PlainTextResponse)
+        def ops_artifact(episode_id: str, artifact_path: str) -> PlainTextResponse:
+            try:
+                contents = controller_instance.read_review_artifact(episode_id, artifact_path)
+            except KeyError as exc:
+                raise HTTPException(status_code=404, detail="Episode not found") from exc
+            except FileNotFoundError as exc:
+                raise HTTPException(status_code=404, detail=str(exc)) from exc
+            return PlainTextResponse(contents)
 
     return app
 

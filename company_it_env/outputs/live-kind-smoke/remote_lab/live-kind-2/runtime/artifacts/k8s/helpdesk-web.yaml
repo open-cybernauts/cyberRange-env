@@ -1,0 +1,38 @@
+# Rendered scenario artifact for helpdesk_easy_union
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: helpdesk-web
+  namespace: company-it
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: helpdesk-web
+  template:
+    metadata:
+      labels:
+        app: helpdesk-web
+    spec:
+      containers:
+        - name: web
+          image: ghcr.io/northbridge/helpdesk-web:1.3.7
+          ports:
+            - containerPort: 8080
+          env:
+            - name: OPS_API_BASE_URL
+              value: http://internal-api.company-it.svc.cluster.local:8080
+            - name: PUBLIC_BRAND
+              value: Northbridge Support
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: helpdesk-web
+  namespace: company-it
+spec:
+  selector:
+    app: helpdesk-web
+  ports:
+    - port: 80
+      targetPort: 8080

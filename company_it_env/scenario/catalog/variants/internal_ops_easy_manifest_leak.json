@@ -10,7 +10,7 @@
   "objective_chain": [
     {
       "objective_id": "inspect_seed_manifest",
-      "description": "Read the inline seed manifest to recover the initialized flag.",
+      "description": "Use the exposed operational review surface to recover the initialized flag.",
       "success_type": "artifact_extract",
       "reward": 0.3,
       "target": "k8s/configmap-init-sql.yaml"
@@ -23,9 +23,9 @@
     }
   ],
   "hints": [
-    "This variant rewards careful manifest reading more than app exploitation.",
-    "One artifact is rendered with far more detail than it should be.",
-    "The public helpdesk remains available, but it is mostly a decoy here."
+    "This variant rewards careful review of externally reachable operational surfaces.",
+    "One review path leaks far more deployment state than it should.",
+    "The public helpdesk remains visible, but it is mostly a decoy here."
   ],
   "sql_template_path": "sql/base_init.sql",
   "artifact_template_paths": [

@@ -10,7 +10,7 @@
   "objective_chain": [
     {
       "objective_id": "inspect_seed_manifest",
-      "description": "Read the seed ConfigMap artifact to understand how the database is initialized.",
+      "description": "Establish the initial path to the backing data store through exposed services.",
       "success_type": "artifact_extract",
       "reward": 0.2,
       "target": "k8s/configmap-init-sql.yaml"
@@ -23,9 +23,9 @@
     }
   ],
   "hints": [
-    "The public search flow is often easier to abuse than the cluster artifacts.",
-    "The manifests explain how the backing database is seeded.",
-    "A UNION-based search payload is enough for this variant."
+    "Begin from the internet-facing helpdesk service.",
+    "One exposed application path reaches data it should never return to unauthenticated users.",
+    "A simple injection path is sufficient once you identify the right request surface."
   ],
   "sql_template_path": "sql/base_init.sql",
   "artifact_template_paths": [

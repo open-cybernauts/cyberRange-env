@@ -10,7 +10,7 @@
   "objective_chain": [
     {
       "objective_id": "inspect_api_manifest",
-      "description": "Inspect the internal API deployment to understand the environment topology.",
+      "description": "Inspect the exposed review surface to understand the environment topology.",
       "success_type": "artifact_extract",
       "reward": 0.2,
       "target": "k8s/internal-api.yaml"
@@ -23,9 +23,9 @@
     }
   ],
   "hints": [
-    "Some manifest clues are intentionally noisy.",
-    "One artifact exposes enough seeded state to skip the application entirely.",
-    "Look for the rendered initialization path."
+    "Some operational clues are intentionally noisy.",
+    "One exposed review path leaks enough seeded state to bypass the main application.",
+    "Look for the rendered initialization data in externally reachable outputs."
   ],
   "sql_template_path": "sql/base_init.sql",
   "artifact_template_paths": [

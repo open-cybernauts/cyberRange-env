@@ -15,6 +15,13 @@ ExploitPath = Literal[
 ObjectiveSuccessType = Literal["flag_submit", "artifact_extract", "endpoint_query", "multi_step"]
 SearchMode = Literal["unsafe_union", "safe_like"]
 FlagSource = Literal["database", "artifact"]
+EpisodeState = Literal["provisioning", "ready", "completed", "terminated", "failed"]
+ServiceExposure = Literal["public", "external_only", "cluster_internal"]
+ServiceProtocol = Literal["http", "https", "tcp"]
+AttackerAccessType = Literal["simulated_shell", "ssh", "web_terminal"]
+ControllerMode = Literal["simulated", "http", "provisioner"]
+DeploymentRole = Literal["redteam", "target"]
+NetworkZone = Literal["attacker", "dmz", "internal"]
 
 
 class ObjectiveDefinition(BaseModel):
@@ -94,7 +101,7 @@ class SeedBundle(BaseModel):
 class ChallengeBrief(BaseModel):
     company_name: str = "Northbridge Support"
     objective: str
-    public_url_path: str = "/helpdesk"
+    public_url_path: str | None = None
     scenario_id: str | None = None
     variant_id: str | None = None
     difficulty: DifficultyLevel | None = None
@@ -103,6 +110,7 @@ class ChallengeBrief(BaseModel):
     objectives: list[ObjectiveDefinition] = Field(default_factory=list)
     hints: list[str] = Field(default_factory=list)
     artifact_paths: list[str] = Field(default_factory=list)
+    attack_surface_summary: list[str] = Field(default_factory=list)
 
 
 class SearchResponse(BaseModel):
@@ -115,9 +123,99 @@ class FlagSubmission(BaseModel):
     flag: str
 
 
+class EpisodeFlagSubmission(FlagSubmission):
+    episode_id: str
+
+
+class EpisodeCreateRequest(BaseModel):
+    seed: int | None = None
+    scenario_id: str | None = None
+    difficulty: DifficultyLevel | None = None
+    controller_episode_id: str | None = None
+
+
 class FlagSubmissionResult(BaseModel):
     accepted: bool
     reward: float
     done: bool
     message: str
     completed_objectives: list[str] = Field(default_factory=list)
+
+
+class RemoteServiceEndpoint(BaseModel):
+    service_id: str
+    display_name: str
+    host: str
+    port: int
+    protocol: ServiceProtocol = "http"
+    exposure: ServiceExposure = "public"
+    entrypoint_path: str | None = None
+    notes: str | None = None
+
+
+class AttackerAccess(BaseModel):
+    connection_type: AttackerAccessType = "simulated_shell"
+    workspace_label: str
+    host: str
+    username: str = "operator"
+    port: int | None = None
+    bootstrap_commands: list[str] = Field(default_factory=list)
+    reachable_hosts: list[str] = Field(default_factory=list)
+    target_services: list[RemoteServiceEndpoint] = Field(default_factory=list)
+    constraints: list[str] = Field(default_factory=list)
+
+
+class EpisodeStatus(BaseModel):
+    controller_episode_id: str
+    state: EpisodeState = "ready"
+    scenario_id: str
+    variant_id: str
+    difficulty: DifficultyLevel
+    namespace: str
+    attacker_ready: bool = True
+    target_services: list[RemoteServiceEndpoint] = Field(default_factory=list)
+    active_flag_source: FlagSource | None = None
+
+
+class EpisodeProvisioningResult(BaseModel):
+    controller_episode_id: str
+    brief: ChallengeBrief
+    attacker_access: AttackerAccess
+    status: EpisodeStatus
+
+
+class ControllerHealth(BaseModel):
+    controller_mode: ControllerMode
+    status: str = "ok"
+    active_episodes: int = 0
+    remote_url: str | None = None
+
+
+class RemoteDeploymentSpec(BaseModel):
+    deployment_id: str
+    role: DeploymentRole
+    namespace: str
+    image: str
+    network_zone: NetworkZone
+    exposed_services: list[RemoteServiceEndpoint] = Field(default_factory=list)
+    notes: list[str] = Field(default_factory=list)
+
+
+class RemoteClusterLayout(BaseModel):
+    namespace: str
+    redteam: RemoteDeploymentSpec
+    targets: list[RemoteDeploymentSpec] = Field(default_factory=list)
+
+
+class ProvisioningRequest(BaseModel):
+    controller_episode_id: str
+    selection: ResetSelection
+    variant: VariantDefinition
+    seed_bundle: SeedBundle
+    layout: RemoteClusterLayout
+    rendered_artifacts: dict[str, str] = Field(default_factory=dict)
+
+
+class ProvisioningResult(BaseModel):
+    attacker_access: AttackerAccess
+    status: EpisodeStatus

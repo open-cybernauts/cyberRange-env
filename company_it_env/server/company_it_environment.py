@@ -9,7 +9,7 @@ from uuid import uuid4
 from fastmcp import FastMCP
 from pydantic import Field, model_validator
 
-from company_it_env.server.lab_runtime import LabRuntime
+from company_it_env.server.controller import LabController, SimulatedLabController
 from company_it_env.server.trajectory_logger import TrajectoryLogger
 
 try:
@@ -82,68 +82,54 @@ class MCPWebAction(Action):
 
 
 class CompanyITEnvironment(MCPEnvironment):
-    """MCP-backed environment that exposes challenge helpers and flag submission."""
+    """MCP-backed control plane for the hybrid remote-lab environment."""
 
     def __init__(
         self,
-        runtime: LabRuntime | None = None,
+        controller: LabController | None = None,
         *,
         max_episode_steps: int = 25,
         trajectory_logger: TrajectoryLogger | None = None,
     ) -> None:
-        self.runtime = runtime or LabRuntime()
+        self.controller = controller or SimulatedLabController()
         self.max_episode_steps = max_episode_steps
-        self.trajectory_logger = trajectory_logger or TrajectoryLogger(self.runtime.output_root)
+        self.trajectory_logger = trajectory_logger or TrajectoryLogger(self.controller.output_root)
         mcp = FastMCP("company_it_env")
+        self._brief: dict[str, Any] | None = None
+        self._controller_episode_id: str | None = None
 
         @mcp.tool
         def challenge_brief() -> dict[str, Any]:
-            """Return the scenario objective, public URL, and artifact list."""
+            """Return the active scenario objective and exposed attack surface summary."""
 
-            return self.runtime.challenge_brief().model_dump()
-
-        @mcp.tool
-        def get_public_url() -> dict[str, str]:
-            """Return the helpdesk entry point inside the Space."""
-
-            brief = self.runtime.challenge_brief()
-            return {"path": brief.public_url_path, "api_path": "/helpdesk/api/search"}
+            if self._brief is None:
+                raise RuntimeError("Environment has not been reset yet.")
+            return dict(self._brief)
 
         @mcp.tool
-        def list_artifacts() -> list[str]:
-            """List scenario artifacts that describe the intended Kubernetes deployment."""
+        def get_attacker_access() -> dict[str, Any]:
+            """Return the attacker workspace details and reachable target services."""
 
-            return self.runtime.list_artifacts()
-
-        @mcp.tool
-        def read_artifact(path: str) -> str:
-            """Read a scenario artifact by package-relative path."""
-
-            return self.runtime.read_artifact(path)
-
-        @mcp.tool
-        def inspect_artifact(path: str) -> dict[str, Any]:
-            """Read a scenario artifact and emit any artifact objective reward."""
-
-            return self.runtime.read_artifact_tool(path)
+            return self.controller.get_attacker_access(self._require_controller_episode_id()).model_dump()
 
         @mcp.tool
         def submit_flag(flag: str) -> dict[str, Any]:
             """Submit a recovered flag and receive reward metadata."""
 
-            return self.runtime.submit_flag(flag).model_dump()
+            result = self.controller.submit_flag(self._require_controller_episode_id(), flag)
+            return result.model_dump()
 
         @mcp.tool
-        def get_scenario_metadata() -> dict[str, Any]:
-            """Return metadata for the active seeded scenario variant."""
+        def episode_status() -> dict[str, Any]:
+            """Return current controller-side episode status and exposed services."""
 
-            return self.runtime.get_scenario_metadata()
+            return self.controller.get_status(self._require_controller_episode_id()).model_dump()
 
         @mcp.tool
         def list_scenarios() -> list[dict[str, Any]]:
             """List scenario families and their available variants."""
 
-            return self.runtime.list_scenarios()
+            return self.controller.list_scenarios()
 
         super().__init__(mcp)
         self._state = State(episode_id=str(uuid4()), step_count=0)
@@ -160,17 +146,28 @@ class CompanyITEnvironment(MCPEnvironment):
         **kwargs: Any,
     ) -> Observation:
         del kwargs
-        brief = self.runtime.reset(seed=seed, scenario_id=scenario_id, difficulty=difficulty)
+        if self._controller_episode_id is not None and not self._terminated:
+            self.controller.terminate_episode(self._controller_episode_id)
         self._seed = seed
         self._has_reset = True
         self._terminated = False
         self._state = State(episode_id=episode_id or str(uuid4()), step_count=0)
+        provision = self.controller.create_episode(
+            seed=seed,
+            scenario_id=scenario_id,
+            difficulty=difficulty,
+            controller_episode_id=str(self._state.episode_id),
+        )
+        self._controller_episode_id = provision.controller_episode_id
+        brief = provision.brief
+        self._brief = brief.model_dump()
         observation = Observation(
             done=False,
             reward=0.0,
             metadata={
                 "status": "ready",
-                "brief": brief.model_dump(),
+                "brief": self._brief,
+                "controller_episode_id": provision.controller_episode_id,
                 "scenario_id": brief.scenario_id,
                 "variant_id": brief.variant_id,
                 "difficulty": brief.difficulty,
@@ -300,3 +297,8 @@ class CompanyITEnvironment(MCPEnvironment):
             if isinstance(candidate, dict):
                 return candidate
         return result
+
+    def _require_controller_episode_id(self) -> str:
+        if self._controller_episode_id is None:
+            raise RuntimeError("Environment has not been reset yet.")
+        return self._controller_episode_id
