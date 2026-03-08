@@ -148,6 +148,7 @@ class CompanyITEnvironment(MCPEnvironment):
         super().__init__(mcp)
         self._state = State(episode_id=str(uuid4()), step_count=0)
         self._seed: int | None = None
+        self._has_reset = False
         self._terminated = False
 
     def reset(
@@ -161,6 +162,7 @@ class CompanyITEnvironment(MCPEnvironment):
         del kwargs
         brief = self.runtime.reset(seed=seed, scenario_id=scenario_id, difficulty=difficulty)
         self._seed = seed
+        self._has_reset = True
         self._terminated = False
         self._state = State(episode_id=episode_id or str(uuid4()), step_count=0)
         observation = Observation(
@@ -208,6 +210,10 @@ class CompanyITEnvironment(MCPEnvironment):
         **kwargs: Any,
     ) -> Observation:
         action = self._coerce_mcp_action(action)
+        if isinstance(action, ListToolsAction) and not self._has_reset:
+            observation = super().step(action, timeout_s=timeout_s, **kwargs)
+            return self._normalize_observation(action, observation)
+
         if self._terminated:
             return Observation(
                 done=True,

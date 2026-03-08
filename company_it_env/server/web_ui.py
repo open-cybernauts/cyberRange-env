@@ -546,14 +546,19 @@ def get_company_web_interface_html(
                     }}
                 }}
 
-                const response = await fetch('/web/step', {{
-                    method: 'POST',
-                    headers: {{ 'Content-Type': 'application/json' }},
-                    body: JSON.stringify({{ action }})
-                }});
+                try {{
+                    const response = await fetch('/web/step', {{
+                        method: 'POST',
+                        headers: {{ 'Content-Type': 'application/json' }},
+                        body: JSON.stringify({{ action }})
+                    }});
 
-                if (!response.ok) {{
-                    alert('Error submitting action');
+                    if (!response.ok) {{
+                        const errorText = await response.text();
+                        alert(`Error submitting action: ${{errorText || response.status}}`);
+                    }}
+                }} catch (error) {{
+                    alert(`Error submitting action: ${{error.message}}`);
                 }}
             }}
 
@@ -581,8 +586,9 @@ def get_company_web_interface_html(
             }}
 
             updateUI(episodeState) {{
-                document.getElementById('env-status').textContent =
-                    episodeState.is_reset ? 'Reset' : 'Running';
+                document.getElementById('env-status').textContent = episodeState.episode_id
+                    ? (episodeState.is_reset ? 'Reset' : 'Running')
+                    : 'Not initialized';
                 document.getElementById('episode-id').textContent =
                     episodeState.episode_id || '-';
                 document.getElementById('step-count').textContent =
